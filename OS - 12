@@ -3,8 +3,6 @@
 #include <windows.h>
 #include <process.h>
 
-#define NUM_PHILOSOPHERS 5
-#define NUM_CHOPSTICKS NUM_PHILOSOPHERS
 
 CRITICAL_SECTION chopstick[NUM_CHOPSTICKS];
 
