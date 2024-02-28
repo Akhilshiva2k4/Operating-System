@@ -1,86 +1,45 @@
 #include <stdio.h>
-#include <pthread.h>
-#include <semaphore.h>
-#include <unistd.h>
-
-#define NUM_READERS 5
-#define NUM_WRITERS 2
-
-sem_t mutex, wrt;
-int readers_count = 0;
-
-void *reader(void *arg) {
-    int reader_id = *(int*)arg;
-    while(1) {
-        sem_wait(&mutex);
-        readers_count++;
-        if(readers_count == 1) // First reader
-            sem_wait(&wrt);
-        sem_post(&mutex);
-
-        // Reading the resource
-        printf("Reader %d is reading\n", reader_id);
-        sleep(1); // Simulating reading process
-
-        sem_wait(&mutex);
-        readers_count--;
-        if(readers_count == 0) // Last reader
-            sem_post(&wrt);
-        sem_post(&mutex);
-
-        // Reading complete
-        printf("Reader %d finished reading\n", reader_id);
-        sleep(2); // Reader waiting before trying to read again
+#define MAX_BLOCKS 50
+struct MemoryBlock {int id;int size;int allocated;};
+void worstFit(int blockSize[], int m, int processSize[], int n) {
+    struct MemoryBlock blocks[MAX_BLOCKS];
+    int i, j;
+    for (i = 0; i < m; i++) {
+        blocks[i].id = i;
+        blocks[i].size = blockSize[i];
+        blocks[i].allocated = 0;
+    }
+    for (i = 0; i < n; i++) {
+        int worstIdx = -1;
+        for (j = 0; j < m; j++) {
+            if (blocks[j].size >= processSize[i] && blocks[j].allocated == 0) {
+                if (worstIdx == -1 || blocks[j].size > blocks[worstIdx].size) {
+                    worstIdx = j;
+                }
+            }
+        }   
+        if (worstIdx != -1) {
+            blocks[worstIdx].allocated = 1;
+            printf("Process %d allocated to Block %d\n", i + 1, blocks[worstIdx].id + 1);
+        } else {
+            printf("Process %d cannot be allocated\n", i + 1);
+        }
     }
 }
-
-void *writer(void *arg) {
-    int writer_id = *(int*)arg;
-    while(1) {
-        sem_wait(&wrt);
-
-        // Writing to the resource
-        printf("Writer %d is writing\n", writer_id);
-        sleep(2); // Simulating writing process
-
-        sem_post(&wrt);
-
-        // Writing complete
-        printf("Writer %d finished writing\n", writer_id);
-        sleep(3); // Writer waiting before trying to write again
-    }
-}
-
 int main() {
-    pthread_t readers[NUM_READERS], writers[NUM_WRITERS];
-    int reader_ids[NUM_READERS];
-    int writer_ids[NUM_WRITERS];
-
-    sem_init(&mutex, 0, 1);
-    sem_init(&wrt, 0, 1);
-
-    // Creating reader threads
-    for(int i = 0; i < NUM_READERS; i++) {
-        reader_ids[i] = i+1;
-        pthread_create(&readers[i], NULL, reader, &reader_ids[i]);
+    int blockSize[] = {100, 500, 200, 300, 600};
+    int processSize[] = {212, 417, 112, 426};
+    int m = sizeof(blockSize) / sizeof(blockSize[0]);
+    int n = sizeof(processSize) / sizeof(processSize[0]);
+    printf("Memory blocks:\n");
+    for (int i = 0; i < m; i++) {
+        printf("Block %d: Size %d\n", i + 1, blockSize[i]);
     }
-
-    // Creating writer threads
-    for(int i = 0; i < NUM_WRITERS; i++) {
-        writer_ids[i] = i+1;
-        pthread_create(&writers[i], NULL, writer, &writer_ids[i]);
+    printf("\nProcesses:\n");
+    for (int i = 0; i < n; i++) {
+        printf("Process %d: Size %d\n", i + 1, processSize[i]);
     }
-
-    // Joining reader threads
-    for(int i = 0; i < NUM_READERS; i++)
-        pthread_join(readers[i], NULL);
-
-    // Joining writer threads
-    for(int i = 0; i < NUM_WRITERS; i++)
-        pthread_join(writers[i], NULL);
-
-    sem_destroy(&mutex);
-    sem_destroy(&wrt);
-
+    printf("\nAllocation:\n");
+    worstFit(blockSize, m, processSize, n);   
     return 0;
 }
